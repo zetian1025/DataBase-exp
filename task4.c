@@ -1,16 +1,14 @@
 #include "utils.h"
 
 int count = 0;
+int idx = 0;
+blk_data data_w;
 
 void SearchInLinear(Buffer *buf, unsigned int addr_r, unsigned int *addr_w, unsigned int x, unsigned int y){
     unsigned char *blk_r; /* A pointer to a block */
     unsigned char *blk_w; /* A pointer to a block */
     blk_data data_r;
-    blk_data data_w;
     blk_w = GetNewBlockInBuffer(buf);
-
-    int idx = 0;
-    CleanData(&data_w);
     while (addr_r) {
         blk_r = ReadDataFromDisk(blk_r, &data_r, addr_r, buf);
         for (int i=0; i<7; i++) {
@@ -18,10 +16,18 @@ void SearchInLinear(Buffer *buf, unsigned int addr_r, unsigned int *addr_w, unsi
                 count++;
                 data_w.x[idx] = x;
                 data_w.y[idx] = y;
-                data_w.x[idx+1] = data_r.x[i];
-                data_w.y[idx+1] = data_r.y[i];
-                idx += 2;
-                if (idx == 6) {
+                idx++;
+                if (idx == 7) {
+                    data_w.addr = (*addr_w) + 1;
+                    blk_w = WriteDataToDisk(blk_w, &data_w, *addr_w, buf);
+                    (*addr_w)++;
+                    idx = 0;
+                    CleanData(&data_w);
+                }
+                data_w.x[idx] = data_r.x[i];
+                data_w.y[idx] = data_r.y[i];
+                idx++;
+                if (idx == 7) {
                     data_w.addr = (*addr_w) + 1;
                     blk_w = WriteDataToDisk(blk_w, &data_w, *addr_w, buf);
                     (*addr_w)++;
@@ -36,11 +42,6 @@ void SearchInLinear(Buffer *buf, unsigned int addr_r, unsigned int *addr_w, unsi
         if (data_r.x[6] > x) {
             break;
         }
-    }
-    if (idx > 0) {
-        data_w.addr = (*addr_w) + 1;
-        WriteDataToDisk(blk_w, &data_w, *addr_w, buf);
-        (*addr_w)++;
     }
     FreeBlockInBuffer(blk_w, buf);
 }
@@ -80,9 +81,10 @@ void InnerJoin(Buffer *buf, unsigned int src_r, unsigned int src_s, unsigned int
         }
         addr = data.addr;
     }
-    blk = ReadDataFromDisk(blk, &data, dst-1, buf);
-    data.addr = 0;
-    blk = WriteDataToDisk(blk, &data, dst-1, buf);
+    if (idx > 0) {
+        data_w.addr = 0;
+        WriteDataToDisk(blk, &data_w, dst-1, buf);
+    }
     FreeBlockInBuffer(blk, buf);
 }
 
